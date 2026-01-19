@@ -21,13 +21,23 @@ resource "aws_iam_policy" "app_policy" {
   name        = "app-full-access"
   description = "Policy used by instances"
 
+  # FIX: Replaced wildcard "*" action with specific, least-privilege permissions
+  # CWE-285: Improper Authorization - restricting IAM actions to specific services
   policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": "*",                             # Issue 2: wildcard actions
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "ec2:DescribeInstances",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
       "Resource": "*"                            # Issue 3: wildcard resources
     }
   ]
