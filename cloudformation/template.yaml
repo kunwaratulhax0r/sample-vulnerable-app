@@ -66,6 +66,11 @@ Resources:
               SSEAlgorithm: aws:kms
               KMSMasterKeyID: alias/aws/s3  # Using AWS managed KMS key for S3
             BucketKeyEnabled: true  # Reduces KMS request costs by using bucket keys
+      # FIX: Enabled S3 bucket versioning to address CWE-284 - Disabled AWS S3 object versioning
+      # This addresses AWS Inspector finding: cloudformation-disabled-s3-versioning
+      # Versioning protects against accidental deletion and allows recovery of previous object versions
+      VersioningConfiguration:
+        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
