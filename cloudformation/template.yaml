@@ -10,18 +10,55 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
+      # FIX: Added AWS KMS encryption for S3 bucket to ensure data-at-rest encryption
+      # This addresses the AWS Inspector finding for S3 bucket encryption with KMS
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt AppBucketKMSKey.Arn
+            BucketKeyEnabled: true
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              # FIX: Removed 'Region' property from Destination - not allowed in CloudFormation ReplicationConfiguration
-              # The region is inferred from the destination bucket ARN
+              Region: us-west-2  # Replication to a different region
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
               Status: Enabled
+
+  # KMS Key for S3 bucket encryption
+  AppBucketKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for encrypting S3 bucket data
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow S3 to use the key
+            Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - 'kms:Decrypt'
+              - 'kms:GenerateDataKey'
+            Resource: '*'
+
+  # KMS Key Alias for easier reference
+  AppBucketKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/app-bucket-key
+      TargetKeyId: !Ref AppBucketKMSKey
 
   # IAM role for S3 replication
   ReplicationRole:
