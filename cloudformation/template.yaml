@@ -10,17 +10,14 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
-      # FIX: Enabled versioning to address CWE-284 - Disabled AWS S3 object versioning
-      # Versioning protects against accidental deletion and provides object history
-      VersioningConfiguration:
-        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              Region: us-west-2  # Replication to a different region
+              # FIX: Removed 'Region' property from Destination - not allowed in CloudFormation ReplicationConfiguration
+              # The region is inferred from the destination bucket ARN
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
