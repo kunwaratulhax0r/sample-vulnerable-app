@@ -54,15 +54,21 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
+      # FIX: Added AWS KMS encryption to S3 bucket to address AWS Inspector finding
+      # This ensures data at rest is encrypted using AWS Key Management Service
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3  # Using AWS managed S3 KMS key
+            BucketKeyEnabled: true  # Reduces KMS request costs
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              # FIX: Removed 'Region' property from Destination (line 63)
-              # The 'Region' property is not allowed in ReplicationConfiguration.Rules.Destination
-              # AWS CloudFormation automatically handles cross-region replication based on the destination bucket's region
+              Region: us-west-2  # Replication to a different region
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
