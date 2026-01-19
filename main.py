@@ -22,14 +22,14 @@ conn.commit()
 
 def add_user(username, password):
     # FIX (CWE-89): Use parameterized query to prevent SQL injection
-    # Parameterized queries separate SQL logic from data, preventing malicious input from altering query structure
+    # Replaced string formatting with placeholders to safely handle user input
     sql = "INSERT INTO users (username, password) VALUES (?, ?)"
     cur.execute(sql, (username, password))
     conn.commit()
 
 def get_user(username):
-    # FIX (CWE-89): Use parameterized query to prevent SQL injection at line 32
-    # The placeholder (?) ensures user input is treated as data, not executable SQL code
+    # FIX (CWE-89): Use parameterized query to prevent SQL injection
+    # Replaced string formatting with placeholders to safely handle user input
     q = "SELECT id, username FROM users WHERE username = ?"
     cur.execute(q, (username,))
     return cur.fetchall()
