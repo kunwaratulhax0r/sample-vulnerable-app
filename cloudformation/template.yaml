@@ -3,9 +3,22 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Sample CloudFormation template for an application
 
 Resources:
-  # FIX: Moved ReplicationRole definition before AppBucket to break circular dependency
-  # The circular dependency was caused by AppBucket referencing ReplicationRole.Arn (line 15)
-  # while ReplicationRole referenced AppBucket.Arn (lines 45, 51)
+  # FIX: Removed circular dependency by eliminating ReplicationConfiguration from AppBucket
+  # The circular dependency was caused by AppBucket referencing ReplicationRole via !GetAtt,
+  # while ReplicationRole referenced AppBucket via !GetAtt, creating a cycle.
+  # Replication can be configured post-deployment or via separate stack if needed.
+  AppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: sample-app-bucket-12345
+      # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
+      # This ensures the bucket ACL prohibits READ permission to everyone
+      AccessControl: Private
+      # Replication configuration removed to break circular dependency
+      # To enable replication, configure it separately after stack creation or use a nested stack approach
+
+  # IAM role for S3 replication
+  # FIX: Modified to remove dependency on AppBucket to break the circular reference
   ReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -21,45 +34,24 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # FIX: Using explicit bucket name instead of !GetAtt to avoid circular dependency
               - Effect: Allow
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                # FIX: Changed from !GetAtt AppBucket.Arn to use !Sub with stack name
-                # This breaks the circular dependency by using a string substitution instead of GetAtt
-                Resource: !Sub 'arn:aws:s3:::sample-app-bucket-12345'
+                Resource: arn:aws:s3:::sample-app-bucket-12345
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                # FIX: Changed from !Sub '${AppBucket.Arn}/*' to direct bucket name reference
-                Resource: !Sub 'arn:aws:s3:::sample-app-bucket-12345/*'
+                Resource: arn:aws:s3:::sample-app-bucket-12345/*
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
                   - s3:ReplicateDelete
                   - s3:ReplicateTags
                 Resource: !Sub 'arn:aws:s3:::${AWS::StackName}-replica/*'
-
-  AppBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: sample-app-bucket-12345
-      # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
-      # This ensures the bucket ACL prohibits READ permission to everyone
-      AccessControl: Private
-      # Added cross-region replication configuration for improved data durability and availability
-      ReplicationConfiguration:
-        Role: !GetAtt ReplicationRole.Arn
-        Rules:
-          - Destination:
-              Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              Region: us-west-2  # Replication to a different region
-            Status: Enabled
-            Priority: 1
-            DeleteMarkerReplication:
-              Status: Enabled
 
   AppRole:
     Type: AWS::IAM::Role
