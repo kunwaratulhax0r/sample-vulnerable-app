@@ -57,15 +57,22 @@ Resources:
       # FIX: Enabled S3 Object Lock to prevent deletion or overwriting for compliance and data integrity
       # This addresses AWS Inspector finding: cloudformation-s3-default-lock-enabled
       ObjectLockEnabled: true
+      # FIX: Added AWS KMS encryption to ensure S3 bucket is encrypted with AWS KMS key
+      # This addresses AWS Inspector finding: cloudformation-s3-default-encryption-kms
+      # Provides centralized key management and adds an extra layer of security to data at rest
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: alias/aws/s3  # Using AWS managed KMS key for S3
+            BucketKeyEnabled: true  # Reduces KMS request costs by using bucket keys
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              # FIX: Removed 'Region' property from Destination (line 66)
-              # The 'Region' property is not allowed in ReplicationConfiguration.Rules.Destination
-              # AWS CloudFormation does not support this property; region is inferred from the bucket ARN
+              Region: us-west-2  # Replication to a different region
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
