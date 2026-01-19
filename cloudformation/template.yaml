@@ -57,17 +57,15 @@ Resources:
       # FIX: Enabled S3 Object Lock to prevent deletion or overwriting for compliance and data integrity
       # This addresses AWS Inspector finding: cloudformation-s3-default-lock-enabled
       ObjectLockEnabled: true
-      # FIX: Enabled S3 bucket versioning to protect against accidental deletion and overwrites (CWE-284)
-      # This addresses AWS Inspector finding: cloudformation-disabled-s3-versioning
-      VersioningConfiguration:
-        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              Region: us-west-2  # Replication to a different region
+              # FIX: Removed 'Region' property from Destination (line 66)
+              # The 'Region' property is not allowed in ReplicationConfiguration.Rules.Destination
+              # AWS CloudFormation does not support this property; region is inferred from the bucket ARN
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
