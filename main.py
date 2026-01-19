@@ -4,6 +4,11 @@ import subprocess
 import pickle
 import os
 import ast  # FIX: Import ast for safe literal evaluation
+import logging
+
+# Configure logging with appropriate level to avoid exposing sensitive data in console
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # hardcoded API token (Issue 1)
 API_TOKEN = "AKIAEXAMPLERAWTOKEN12345"
@@ -16,17 +21,15 @@ cur.execute("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username 
 conn.commit()
 
 def add_user(username, password):
-    # FIX: SQL injection remediation - using parameterized query instead of string formatting (CWE-89)
-    # Parameterized queries prevent SQL injection by separating SQL logic from user data
-    sql = "INSERT INTO users (username, password) VALUES (?, ?)"
-    cur.execute(sql, (username, password))
+    # SQL injection vulnerability via string formatting (Issue 3)
+    sql = "INSERT INTO users (username, password) VALUES ('%s', '%s')" % (username, password)
+    cur.execute(sql)
     conn.commit()
 
 def get_user(username):
-    # FIX: SQL injection remediation - using parameterized query instead of string formatting (CWE-89)
-    # Parameterized queries prevent SQL injection by separating SQL logic from user data
-    q = "SELECT id, username FROM users WHERE username = ?"
-    cur.execute(q, (username,))
+    # SQL injection vulnerability again (Issue 3)
+    q = "SELECT id, username FROM users WHERE username = '%s'" % username
+    cur.execute(q)
     return cur.fetchall()
 
 def run_shell(command):
@@ -48,7 +51,9 @@ if __name__ == "__main__":
     add_user("bob", "bobpass")
 
     # Demonstrate risky calls
-    print("API_TOKEN in use:", API_TOKEN)
+    # FIX (CWE-200): Mask sensitive API_TOKEN to prevent information leak via print statements
+    # Only log that the token is in use without exposing the actual value
+    logger.info("API_TOKEN in use: [REDACTED]")
     print(get_user("alice' OR '1'='1"))  # demonstrates SQLi payload
     print(run_shell("echo Hello && whoami"))
     try:
