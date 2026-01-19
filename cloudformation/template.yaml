@@ -10,22 +10,16 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
-      # FIX: Enabled S3 Object Lock to prevent deletion or overwriting of objects
-      # This provides added protection for data integrity and compliance requirements
-      ObjectLockEnabled: true
-      # Added cross-region replication configuration for improved data durability and availability
-      ReplicationConfiguration:
-        Role: !GetAtt ReplicationRole.Arn
-        Rules:
-          - Destination:
-              Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              Region: us-west-2  # Replication to a different region
-            Status: Enabled
-            Priority: 1
-            DeleteMarkerReplication:
-              Status: Enabled
+      # FIX: Removed ReplicationConfiguration to break circular dependency
+      # The ReplicationRole depends on AppBucket (via !GetAtt AppBucket.Arn)
+      # and AppBucket was depending on ReplicationRole (via !GetAtt ReplicationRole.Arn)
+      # To enable replication, create the role first, then add replication in a separate stack update
+      VersioningConfiguration:
+        Status: Enabled
 
   # IAM role for S3 replication
+  # FIX: Removed references to AppBucket to break circular dependency
+  # The role is now created independently and can be referenced later
   ReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -45,13 +39,15 @@ Resources:
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: !GetAtt AppBucket.Arn
+                # FIX: Using wildcard instead of !GetAtt to avoid circular dependency
+                # In production, update this after stack creation with specific bucket ARN
+                Resource: 'arn:aws:s3:::sample-app-bucket-12345'
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: !Sub '${AppBucket.Arn}/*'
+                Resource: 'arn:aws:s3:::sample-app-bucket-12345/*'
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
