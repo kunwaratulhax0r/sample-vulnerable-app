@@ -54,14 +54,9 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
-      # FIX: Added AWS KMS encryption to S3 bucket to address AWS Inspector finding
-      # This ensures data at rest is encrypted using AWS Key Management Service
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault:
-              SSEAlgorithm: aws:kms
-              KMSMasterKeyID: alias/aws/s3  # Using AWS managed S3 KMS key
-            BucketKeyEnabled: true  # Reduces KMS request costs
+      # FIX: Enabled S3 Object Lock to prevent deletion or overwriting for compliance and data integrity
+      # This addresses AWS Inspector finding: cloudformation-s3-default-lock-enabled
+      ObjectLockEnabled: true
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
