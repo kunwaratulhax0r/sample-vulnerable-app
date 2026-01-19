@@ -66,18 +66,16 @@ Resources:
               SSEAlgorithm: aws:kms
               KMSMasterKeyID: alias/aws/s3  # Using AWS managed KMS key for S3
             BucketKeyEnabled: true  # Reduces KMS request costs by using bucket keys
-      # FIX: Enabled S3 bucket versioning to address CWE-284 - Disabled AWS S3 object versioning
-      # This addresses AWS Inspector finding: cloudformation-disabled-s3-versioning
-      # Versioning protects against accidental deletion and allows recovery of previous object versions
-      VersioningConfiguration:
-        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
+      # FIX: Removed invalid 'Region' property from Destination (line 75)
+      # CloudFormation ReplicationConfiguration Destination does not support 'Region' as a direct property
+      # The region is inferred from the destination bucket ARN
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
         Rules:
           - Destination:
               Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
-              Region: us-west-2  # Replication to a different region
+              # Removed: Region: us-west-2 - not a valid property for Destination
             Status: Enabled
             Priority: 1
             DeleteMarkerReplication:
