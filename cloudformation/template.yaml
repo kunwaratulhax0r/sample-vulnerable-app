@@ -54,6 +54,10 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
+      # FIX (CWE-284): Enabled versioning to address AWS Inspector finding - cloudformation-disabled-s3-versioning
+      # Versioning protects against accidental deletion and provides object history for recovery
+      VersioningConfiguration:
+        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
