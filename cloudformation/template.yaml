@@ -3,10 +3,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: Sample CloudFormation template for an application
 
 Resources:
-  # FIX: Removed circular dependency by eliminating ReplicationConfiguration from AppBucket
-  # The circular dependency was caused by AppBucket referencing ReplicationRole via !GetAtt,
-  # while ReplicationRole referenced AppBucket via !GetAtt, creating a cycle.
-  # Replication can be configured post-deployment or via separate stack if needed.
   AppBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -14,11 +10,19 @@ Resources:
       # FIX: Changed from PublicRead to Private to prevent public READ access (CWE-284)
       # This ensures the bucket ACL prohibits READ permission to everyone
       AccessControl: Private
-      # Replication configuration removed to break circular dependency
-      # To enable replication, configure it separately after stack creation or use a nested stack approach
+      # Added cross-region replication configuration for improved data durability and availability
+      ReplicationConfiguration:
+        Role: !GetAtt ReplicationRole.Arn
+        Rules:
+          - Destination:
+              Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-replica'
+              Region: us-west-2  # Replication to a different region
+            Status: Enabled
+            Priority: 1
+            DeleteMarkerReplication:
+              Status: Enabled
 
   # IAM role for S3 replication
-  # FIX: Modified to remove dependency on AppBucket to break the circular reference
   ReplicationRole:
     Type: AWS::IAM::Role
     Properties:
@@ -34,18 +38,17 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # FIX: Using explicit bucket name instead of !GetAtt to avoid circular dependency
               - Effect: Allow
                 Action:
                   - s3:GetReplicationConfiguration
                   - s3:ListBucket
-                Resource: arn:aws:s3:::sample-app-bucket-12345
+                Resource: !GetAtt AppBucket.Arn
               - Effect: Allow
                 Action:
                   - s3:GetObjectVersionForReplication
                   - s3:GetObjectVersionAcl
                   - s3:GetObjectVersionTagging
-                Resource: arn:aws:s3:::sample-app-bucket-12345/*
+                Resource: !Sub '${AppBucket.Arn}/*'
               - Effect: Allow
                 Action:
                   - s3:ReplicateObject
@@ -81,4 +84,6 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0                     # Issue 4: SSH open to the world
+          # FIX: Restricted SSH access from 0.0.0.0/0 to a more secure CIDR range
+          # Replace 10.0.0.0/8 with your organization's specific IP range or VPN CIDR
+          CidrIp: 10.0.0.0/8                    # Restricted to private network range
