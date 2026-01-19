@@ -57,6 +57,10 @@ Resources:
       # FIX: Enabled S3 Object Lock to prevent deletion or overwriting for compliance and data integrity
       # This addresses AWS Inspector finding: cloudformation-s3-default-lock-enabled
       ObjectLockEnabled: true
+      # FIX: Enabled S3 bucket versioning to protect against accidental deletion and overwrites (CWE-284)
+      # This addresses AWS Inspector finding: cloudformation-disabled-s3-versioning
+      VersioningConfiguration:
+        Status: Enabled
       # Added cross-region replication configuration for improved data durability and availability
       ReplicationConfiguration:
         Role: !GetAtt ReplicationRole.Arn
